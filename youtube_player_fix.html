@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <title>YouTube Player Fix</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, sans-serif;
+      background: #0b0b12;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: min(520px, 100%);
+      padding: 22px;
+      border-radius: 22px;
+      background: #181824;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+
+    p {
+      margin: 0 0 16px;
+      color: #c9c9d8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+      font-size: 15px;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: #8f8fa3;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 14px;
+      border: 0;
+      border-radius: 14px;
+      background: #6d5dfc;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .player {
+      margin-top: 16px;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: black;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .status {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #d8d8e8;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .warn {
+      color: #ffce73;
+    }
+  </style>
+</head>
+<body>
+  <section class="card">
+    <h1>YouTube 플레이어</h1>
+    <p>
+      링크를 넣고 불러온 뒤, 영상 안의 재생 버튼을 직접 누르세요.
+    </p>
+
+    <input id="urlInput" placeholder="유튜브 링크 또는 영상 ID" />
+
+    <button id="loadBtn">영상 불러오기</button>
+
+    <div class="player">
+      <iframe
+        id="youtubeFrame"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <div id="status" class="status">
+      상태: 대기 중
+    </div>
+  </section>
+
+  <script>
+    const urlInput = document.getElementById("urlInput");
+    const loadBtn = document.getElementById("loadBtn");
+    const youtubeFrame = document.getElementById("youtubeFrame");
+    const statusBox = document.getElementById("status");
+
+    function setStatus(text, warn = false) {
+      statusBox.innerHTML = warn
+        ? `<span class="warn">${text}</span>`
+        : text;
+    }
+
+    function extractYouTubeVideoId(input) {
+      const text = input.trim();
+
+      if (/^[a-zA-Z0-9_-]{11}$/.test(text)) {
+        return text;
+      }
+
+      try {
+        const url = new URL(text);
+
+        if (url.hostname.includes("youtu.be")) {
+          return url.pathname.slice(1).split("?")[0];
+        }
+
+        if (url.hostname.includes("youtube.com")) {
+          if (url.pathname === "/watch") {
+            return url.searchParams.get("v") || "";
+          }
+
+          if (url.pathname.startsWith("/shorts/")) {
+            return url.pathname.split("/shorts/")[1].split("/")[0];
+          }
+
+          if (url.pathname.startsWith("/embed/")) {
+            return url.pathname.split("/embed/")[1].split("/")[0];
+          }
+        }
+
+        return "";
+      } catch {
+        return "";
+      }
+    }
+
+    function makeEmbedUrl(videoId) {
+      const params = new URLSearchParams({
+        controls: "1",
+        autoplay: "0",
+        rel: "0",
+        playsinline: "1",
+        loop: "1",
+        playlist: videoId
+      });
+
+      if (location.origin && location.origin.startsWith("http")) {
+        params.set("origin", location.origin);
+      }
+
+      return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+    }
+
+    function loadVideo() {
+      const videoId = extractYouTubeVideoId(urlInput.value);
+
+      if (!videoId) {
+        setStatus("상태: 올바른 유튜브 링크가 아닙니다.", true);
+        return;
+      }
+
+      youtubeFrame.src = makeEmbedUrl(videoId);
+
+      setStatus(
+        "상태: 영상 불러옴. 영상 안의 재생 버튼을 직접 누르세요."
+      );
+    }
+
+    loadBtn.addEventListener("click", loadVideo);
+  </script>
+</body>
+</html>
